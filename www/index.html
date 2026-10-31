@@ -1,0 +1,1042 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="utf-8">
+    <meta name="format-detection" content="telephone=no">
+    <meta name="msapplication-tap-highlight" content="no">
+    <meta name="viewport" content="initial-scale=1, width=device-width, viewport-fit=cover">
+    <title>MyFamilyID</title>
+    <style>
+        /* ========== FONT LOKAL (Torus) ========== */
+        @font-face { font-family: 'Torus'; src: url('assets/fonts/torus_regular.otf'); font-weight: 400; }
+        @font-face { font-family: 'Torus'; src: url('assets/fonts/torus_semibold.otf'); font-weight: 500; }
+        @font-face { font-family: 'Torus'; src: url('assets/fonts/torus_bold.otf'); font-weight: 700; }
+
+        :root {
+            --accent: #1e293b;
+            --card: rgba(255,255,255,0.92);
+            --border: rgba(0,0,0,0.08);
+            --text: #1e293b;
+            --muted: #64748b;
+            --radius: 14px;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Torus', sans-serif;
+            color: var(--text);
+            min-height: 100vh;
+            user-select: none;
+            overflow-x: hidden;
+            position: relative;
+            background: #0f172a;
+        }
+        /* Background foto — ganti URL ini ke file lokal untuk offline */
+        body::before {
+            content: '';
+            position: fixed; inset: 0;
+            background: url('https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=1200&q=80') center/cover no-repeat;
+            filter: blur(6px) brightness(0.35);
+            transform: scale(1.05);
+            z-index: 0;
+        }
+        body > * { position: relative; z-index: 1; }
+        body:not(.has-nav) {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+
+        /* ===== ICON LOKAL (SVG) ===== */
+        .icon { width: 22px; height: 22px; display: inline-block; vertical-align: middle; }
+        .icon-sm { width: 18px; height: 18px; }
+        .icon-lg { width: 28px; height: 28px; }
+        .icon-login { width: 20px; height: 20px; position: absolute; right: 12px; top: 50%; transform: translateY(-50%); cursor: pointer; opacity: 0.5; }
+
+        /* ===== LOGIN ===== */
+        #loginScreen {
+            max-width: 380px; width: 90%; padding: 2rem;
+            background: white; border-radius: 16px;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+            opacity: 0; transform: scale(0.92);
+            transition: opacity 0.35s, transform 0.35s;
+            z-index: 10;
+        }
+        body:not(.has-nav) #loginScreen { opacity: 1; transform: scale(1); }
+        .input-box {
+            position: relative; width: 100%; height: 50px;
+            margin: 20px 0; border-bottom: 2px solid var(--muted);
+        }
+        .input-box input {
+            width: 100%; height: 100%; background: transparent;
+            border: none; outline: none; font-size: 1rem; color: var(--text);
+            padding: 0 44px 0 5px; font-family: inherit;
+        }
+        .input-box label {
+            position: absolute; left: 5px; top: 50%; transform: translateY(-50%);
+            font-size: 1rem; color: var(--muted); pointer-events: none; transition: 0.4s;
+        }
+        .input-box input:focus ~ label,
+        .input-box input:valid ~ label {
+            top: -5px; font-size: 0.85rem; color: var(--accent);
+        }
+
+        /* ===== HEADER ===== */
+        #headerContainer {
+            background: var(--accent); color: white;
+            padding: 12px 16px; display: flex; justify-content: space-between;
+            align-items: center; position: sticky; top: 0; z-index: 100;
+        }
+        #headerContainer h1 { font-size: 1.1em; font-weight: 500; }
+        .header-right { text-align: right; font-size: 0.85em; opacity: 0.85; }
+
+        /* ===== APP ===== */
+        #appContainer {
+            max-width: 600px; margin: 0 auto; min-height: 100vh;
+            display: flex; flex-direction: column; padding-bottom: 80px;
+            background: transparent;
+            transition: opacity 0.4s cubic-bezier(0.4,0,0.2,1);
+        }
+        #contentWrapper { flex: 1; position: relative; overflow: hidden; }
+        .scrollable-area {
+            position: absolute; inset: 0; overflow-y: auto;
+            padding: 16px; opacity: 0; pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+        .scrollable-area.active { opacity: 1; pointer-events: auto; }
+
+        /* ===== DOCUMENT ITEM ===== */
+        .document-item {
+            display: flex; align-items: center; background: var(--card);
+            border: 1px solid var(--border); border-radius: var(--radius);
+            padding: 14px 12px; margin-bottom: 10px; gap: 12px;
+            transition: transform 0.15s; -webkit-tap-highlight-color: transparent;
+        }
+        .document-item:active { transform: scale(0.97); }
+        .doc-icon {
+            width: 42px; height: 42px; background: #fee2e2; border-radius: 10px;
+            display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+        }
+        .doc-icon .icon { width: 22px; height: 22px; }
+        .doc-info { flex: 1; min-width: 0; }
+        .doc-name { font-size: 14px; font-weight: 500; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .doc-ext { font-size: 11px; color: var(--muted); margin-top: 2px; }
+        .doc-actions { display: flex; gap: 4px; flex-shrink: 0; }
+        .doc-btn {
+            width: 38px; height: 38px; border: none; background: transparent;
+            border-radius: 10px; display: flex; align-items: center; justify-content: center;
+            cursor: pointer; -webkit-tap-highlight-color: transparent;
+        }
+        .doc-btn:active { background: rgba(0,0,0,0.08); }
+        .doc-btn.export-btn .icon { color: #2563eb; }
+        .doc-btn.share-btn .icon { color: #16a34a; }
+
+        .search-wrapper { position: relative; margin-bottom: 14px; }
+        .search-wrapper .icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); opacity: 0.4; pointer-events: none; }
+        .search-box {
+            width: 100%; padding: 12px 16px 12px 46px;
+            border: 1px solid var(--border); border-radius: var(--radius);
+            font-size: 0.95rem; font-family: inherit;
+            background: var(--card); outline: none;
+        }
+        .search-box:focus { border-color: var(--accent); }
+
+        /* ===== NAV ===== */
+        .menu {
+            position: fixed; bottom: 0; left: 0; right: 0;
+            background: rgba(255,255,255,0.95); backdrop-filter: blur(12px);
+            border-top: 1px solid var(--border);
+            display: flex; justify-content: center; gap: 12px;
+            padding: 8px 24px; z-index: 100; height: 68px; align-items: center;
+            padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+        }
+        .nav-item {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            min-width: 100px; height: 52px; border-radius: 14px; color: var(--muted);
+            text-decoration: none; border: none; background: transparent;
+            cursor: pointer; font-family: inherit; -webkit-tap-highlight-color: transparent;
+            transition: all 0.3s; padding: 6px 20px;
+        }
+        .nav-item.active { background: var(--accent); color: white !important; }
+        .nav-item .icon { width: 26px; height: 26px; }
+        .nav-item span:last-child { font-size: 12px; font-weight: 500; line-height: 1; margin-top: 3px; }
+
+        /* ===== CONTEXT MENU ===== */
+        .context-menu {
+            position: fixed; background: white; border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.15); z-index: 200;
+            padding: 6px 0; display: none; min-width: 180px;
+        }
+        .context-menu button {
+            display: flex; align-items: center; gap: 10px; width: 100%;
+            background: none; border: none; padding: 10px 16px; text-align: left;
+            cursor: pointer; font-size: 14px; font-family: inherit; color: var(--text);
+        }
+        .context-menu button:active { background: #f1f5f9; }
+
+        /* ===== POPUP ===== */
+        .custom-popup {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+            display: flex; justify-content: center; align-items: center;
+            z-index: 500; opacity: 0; pointer-events: none; transition: opacity 0.25s;
+        }
+        .custom-popup.show { opacity: 1; pointer-events: all; }
+        .popup-content {
+            background: white; border-radius: 16px; width: 88%; max-width: 400px;
+            max-height: 70vh; overflow: hidden; display: flex; flex-direction: column;
+            transform: scale(0.85); transition: transform 0.25s;
+        }
+        .custom-popup.show .popup-content { transform: scale(1); }
+        .popup-header { padding: 16px 20px; background: var(--accent); color: white; font-weight: 600; }
+        .popup-body { padding: 20px; flex: 1; overflow-y: auto; white-space: pre-wrap; font-size: 14px; line-height: 1.5; }
+        .popup-footer { padding: 12px 16px; display: flex; justify-content: flex-end; gap: 8px; }
+        .popup-footer button {
+            padding: 8px 20px; border: none; border-radius: 10px; font-size: 14px;
+            font-family: inherit; font-weight: 500; cursor: pointer; color: white;
+            transition: transform 0.15s;
+        }
+        .popup-footer button:active { transform: scale(0.93); }
+        .popup-back-btn { background: #3b82f6; }
+        .popup-logout-btn { background: #dc2626; display: none; }
+
+        /* ===== LOADING ===== */
+        #loadingOverlay {
+            position: fixed; inset: 0; background: rgba(255,255,255,0.9);
+            display: flex; justify-content: center; align-items: center;
+            z-index: 999; opacity: 0; pointer-events: none; transition: opacity 0.3s;
+        }
+        #loadingOverlay.show { opacity: 1; pointer-events: all; }
+        .spinner {
+            width: 36px; height: 36px; border: 3px solid #e2e8f0;
+            border-top-color: var(--accent); border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ===== SLIDE NAV ===== */
+        @keyframes slideOutLeft  { from { transform: translateX(0); opacity: 1; } to { transform: translateX(-40%); opacity: 0; } }
+        @keyframes slideInRight  { from { transform: translateX(40%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        @keyframes slideOutRight { from { transform: translateX(0); opacity: 1; } to { transform: translateX(40%); opacity: 0; } }
+        @keyframes slideInLeft   { from { transform: translateX(-40%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        .slide-out-left  { animation: slideOutLeft  0.35s cubic-bezier(0.4,0,0.2,1) forwards; }
+        .slide-in-right  { animation: slideInRight  0.35s cubic-bezier(0.4,0,0.2,1) forwards; }
+        .slide-out-right { animation: slideOutRight 0.35s cubic-bezier(0.4,0,0.2,1) forwards; }
+        .slide-in-left   { animation: slideInLeft   0.35s cubic-bezier(0.4,0,0.2,1) forwards; }
+        .fade-out { opacity: 0 !important; }
+
+        /* ===== PDF VIEWER TRANSITION ===== */
+        #documentViewerScreen {
+            position: fixed; inset: 0; background: #1e293b; z-index: 300;
+            display: none; flex-direction: column;
+            opacity: 0; transform: translateY(100%);
+            transition: opacity 0.3s cubic-bezier(0.4,0,0.2,1), transform 0.3s cubic-bezier(0.4,0,0.2,1);
+        }
+        #documentViewerScreen.open { opacity: 1; transform: translateY(0); }
+        #documentViewerScreen.closing { opacity: 0; transform: translateY(100%); }
+
+        /* ===== PROFILE ===== */
+        .profile-photo {
+            width: 88px; height: 88px; border-radius: 50%; background-size: cover;
+            background-position: center; background-color: #e2e8f0;
+            margin: 0 auto 1rem; border: 3px solid var(--accent);
+        }
+        .profile-card {
+            background: var(--card); border-radius: 16px; padding: 24px 20px;
+            max-width: 320px; margin: 0 auto;
+        }
+        .profile-card p { margin: 8px 0; font-size: 14px; display: flex; justify-content: space-between; }
+        .profile-card p strong { color: var(--muted); }
+        .btn-logout {
+            width: 100%; padding: 12px; background: #dc2626; color: white;
+            border: none; border-radius: 12px; margin-top: 20px;
+            font-size: 15px; font-family: inherit; font-weight: 500; cursor: pointer;
+        }
+        .btn-logout:active { transform: scale(0.96); opacity: 0.85; }
+
+
+        .viewer-header {
+            display: flex; align-items: center; background: var(--accent);
+            color: white; padding: 10px 12px; gap: 10px; z-index: 301;
+        }
+        .viewer-header button {
+            background: none; border: none; color: white; cursor: pointer;
+            width: 38px; height: 38px; border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .viewer-header button:active { background: rgba(255,255,255,0.15); }
+        .viewer-title { flex: 1; font-size: 1em; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .viewer-actions { display: flex; gap: 4px; }
+        #pdfViewerContainer {
+            flex: 1; overflow: auto; background: #475569;
+            display: flex; flex-direction: column; align-items: center; padding: 8px;
+        }
+        #pdfViewerContainer canvas { box-shadow: 0 2px 12px rgba(0,0,0,0.3); margin-bottom: 8px; }
+        #pdfPageInfo {
+            position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
+            background: rgba(0,0,0,0.7); color: white; padding: 6px 16px;
+            border-radius: 20px; font-size: 13px; z-index: 302; pointer-events: none;
+        }
+
+        /* ===== SVG ICON STYLES ===== */
+        .viewer-header .icon { filter: brightness(0) invert(1); }
+        .nav-item .icon { opacity: 0.6; }
+        .nav-item.active .icon { opacity: 1; filter: brightness(0) invert(1); }
+        .icon-right { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); cursor: pointer; opacity: 0.5; }
+    </style>
+</head>
+<body id="mainBody">
+
+    <!-- ===== LOGIN ===== -->
+    <div id="loginScreen">
+        <h2 style="text-align:center; margin-bottom:1.8rem; font-weight:600;">Login</h2>
+        <form id="loginForm">
+            <div class="input-box">
+                <input type="text" id="username" required autocomplete="username">
+                <label>Username</label>
+                <img src="assets/icon/person-outline.svg" class="icon-right" style="width:20px;height:20px;">
+            </div>
+            <div class="input-box">
+                <input type="password" id="password" required autocomplete="current-password">
+                <label>Password (NIK)</label>
+                <img src="assets/icon/eye-off-outline.svg" class="icon-right" id="togglePassword" style="width:20px;height:20px;cursor:pointer;">
+            </div>
+            <label style="display:flex; align-items:center; gap:8px; margin:12px 0; font-size:0.95rem; cursor:pointer;">
+                <input type="checkbox" id="rememberMe"> Ingat Saya
+            </label>
+            <button type="submit" style="width:100%; padding:0.85rem; background:var(--accent); color:white; border:none; border-radius:12px; font-size:1rem; font-family:inherit; font-weight:500; cursor:pointer;">Login</button>
+        </form>
+    </div>
+
+    <!-- ===== APP ===== -->
+    <div id="appContainer" style="display:none;">
+        <div id="headerContainer">
+            <h1 id="pageTitle">Dokumen Keluarga</h1>
+            <div class="header-right">
+                <div id="currentTime">--:--</div>
+                <div id="userAgeDisplay">Umur: --</div>
+            </div>
+        </div>
+        <div id="contentWrapper">
+            <div id="documentPreviewArea" class="scrollable-area active">
+                <div class="search-wrapper">
+                    <img src="assets/icon/search-outline.svg" class="icon" style="position:absolute;left:14px;top:50%;transform:translateY(-50%);opacity:0.4;pointer-events:none;width:20px;height:20px;">
+                    <input type="text" id="searchInput" class="search-box" placeholder="Cari dokumen...">
+                </div>
+                <div id="documentsList"><p style="text-align:center;color:var(--muted);padding:2rem 0;">Memuat dokumen...</p></div>
+            </div>
+            <div id="profileArea" class="scrollable-area" style="text-align:center; padding:2rem 1rem;">
+                <div class="profile-card">
+                    <div id="profilePhoto" class="profile-photo"></div>
+                    <p><strong>Nama</strong> <span id="profileName">User</span></p>
+                    <p><strong>NIK</strong> <span id="profileNik">--</span></p>
+                    <p><strong>Umur</strong> <span id="profileAge">--</span></p>
+                    <p><strong>Status</strong> <span id="profileStatus">--</span></p>
+                    <button class="btn-logout" onclick="showLogoutConfirm()">Keluar</button>
+                </div>
+            </div>
+        </div>
+        <nav class="menu" id="mainNav">
+            <button class="nav-item active" onclick="navigateTo('documents')">
+                <img src="assets/icon/folder-outline.svg" class="icon">
+                <span>Dokumen</span>
+            </button>
+            <button class="nav-item" onclick="navigateTo('profile')">
+                <img src="assets/icon/person-outline.svg" class="icon">
+                <span>Profil</span>
+            </button>
+        </nav>
+    </div>
+
+    <!-- ===== PDF VIEWER ===== -->
+    <div id="documentViewerScreen">
+        <div class="viewer-header">
+            <button onclick="closeDocumentViewer()"><img src="assets/icon/arrow-back-outline.svg" class="icon"></button>
+            <div class="viewer-title" id="viewerTitle">Dokumen</div>
+            <div class="viewer-actions">
+                <button id="btnExportViewer" title="Ekspor"><img src="assets/icon/download-outline.svg" class="icon"></button>
+                <button id="btnShareViewer" title="Bagikan"><img src="assets/icon/share-outline.svg" class="icon"></button>
+            </div>
+        </div>
+        <div id="pdfViewerContainer"></div>
+        <div id="pdfPageInfo"></div>
+    </div>
+
+    <!-- ===== CONTEXT MENU ===== -->
+    <div id="contextMenu" class="context-menu">
+        <button onclick="handleContextAction('export')"><img src="assets/icon/download-outline.svg" class="icon-sm"> Ekspor ke Storage</button>
+        <button onclick="handleContextAction('share')"><img src="assets/icon/share-outline.svg" class="icon-sm"> Bagikan</button>
+    </div>
+
+    <!-- ===== POPUP ===== -->
+    <div id="customPopup" class="custom-popup" style="display:none;">
+        <div class="popup-content">
+            <div class="popup-header" id="popupTitle">Info</div>
+            <div class="popup-body" id="popupBody"></div>
+            <div class="popup-footer">
+                <button class="popup-back-btn" id="popupBackBtn" onclick="closeCustomPopup()">Kembali</button>
+                <button class="popup-logout-btn" id="popupLogoutBtn" onclick="confirmLogout()">Keluar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== SCREENSHOT WARNING ===== -->
+    <div id="screenshotPopup" class="custom-popup" style="display:none;">
+        <div class="popup-content">
+            <div class="popup-header" style="background:#dc2626;">Peringatan</div>
+            <div class="popup-body" style="text-align:center; padding:24px 20px;">
+                <div style="width:56px;height:56px;background:#fee2e2;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
+                    <img src="assets/icon/warning-outline.svg" style="width:32px;height:32px;color:#dc2626;">
+                </div>
+                <p style="font-size:15px;font-weight:600;color:#1e293b;margin-bottom:8px;">Aplikasi mengandung konten sensitif</p>
+                <p style="font-size:13px;color:#64748b;line-height:1.5;">Mohon hentikan semua perekaman layar dan pengambilan gambar di layar ini.</p>
+            </div>
+            <div class="popup-footer" style="justify-content:flex-end;">
+                <button class="popup-back-btn" onclick="closeScreenshotPopup()">Tutup</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="loadingOverlay"><div class="spinner"></div></div>
+
+    <script>
+        // ========== PDF.JS ==========
+        let pdfjsLib = null;
+        let pdfJsLoaded = false;
+
+        async function loadPdfJs() {
+            if (pdfJsLoaded) return;
+            try {
+                const mod = await import('./lib/pdfjs/pdf.mjs');
+                pdfjsLib = mod.default || mod;
+                // DISABLE worker — run on main thread for Android WebView reliability
+                if (pdfjsLib.GlobalWorkerOptions) {
+                    pdfjsLib.GlobalWorkerOptions.workerSrc = '';
+                }
+                pdfJsLoaded = true;
+                console.log('PDF.js loaded successfully (worker disabled, main thread)');
+            } catch (e) {
+                console.error('PDF.js load error:', e);
+                // Retry: try loading via script injection
+                try {
+                    await new Promise((resolve, reject) => {
+                        const s = document.createElement('script');
+                        s.src = './lib/pdfjs/pdf.mjs';
+                        s.type = 'module';
+                        s.onload = resolve;
+                        s.onerror = reject;
+                        document.head.appendChild(s);
+                    });
+                    if (window.pdfjsLib) {
+                        pdfjsLib = window.pdfjsLib;
+                        pdfjsLib.GlobalWorkerOptions.workerSrc = '';
+                        pdfJsLoaded = true;
+                    }
+                } catch (e2) {
+                    console.error('PDF.js retry also failed:', e2);
+                    pdfJsLoaded = true;
+                }
+            }
+        }
+
+        // ========== CAPACITOR PLUGINS ==========
+        const Filesystem  = window.Capacitor?.Plugins?.Filesystem;
+        const SharePlugin = window.Capacitor?.Plugins?.Share;
+        const Preferences = window.Capacitor?.Plugins?.Preferences;
+        const AppPlugin   = window.Capacitor?.Plugins?.App;
+
+        // ========== GLOBAL STATE ==========
+        let currentUser = null;
+        let isAppReady = false;
+        let selectedDocument = null;
+        let currentSection = 'documents';
+        let isViewerOpen = false;
+        let longPressTriggered = false;
+        let users = [];
+        let allDocs = [];
+        let clockInterval = null;
+
+        // ========== USERS ==========
+        async function loadUsers() {
+            try {
+                const res = await fetch('usr/user.json');
+                if (!res.ok) throw new Error('Gagal memuat user.json');
+                users = await res.json();
+            } catch (e) { console.error('loadUsers error:', e); users = []; }
+        }
+
+        // ========== DOCUMENT INDEX ==========
+        async function loadDocumentIndex() {
+            try {
+                const res = await fetch('Doc/index.json');
+                if (!res.ok) throw new Error('Gagal memuat index.json');
+                return await res.json();
+            } catch (e) { console.error('loadDocumentIndex error:', e); return []; }
+        }
+
+        // ========== PERMISSION ==========
+        async function ensureStoragePermission() {
+            if (!Filesystem) return true;
+            try {
+                const s = await Filesystem.checkPermissions();
+                if (s?.publicStorage === 'granted') return true;
+                const r = await Filesystem.requestPermissions();
+                if (r?.publicStorage === 'granted') return true;
+            } catch (e) { console.warn('Permission check failed:', e); }
+            showCustomPopup('Izin Diperlukan', 'Izin penyimpanan diperlukan untuk mengekspor dokumen.\nSilakan izinkan di Pengaturan.');
+            return false;
+        }
+
+        // ========== EXPORT PDF ==========
+        async function exportPDF(filename, displayName) {
+            try {
+                const res = await fetch('Doc/' + filename);
+                if (!res.ok) throw new Error('File tidak ditemukan: ' + filename);
+                const blob = await res.blob();
+                const base64 = await blobToBase64(blob);
+
+                if (Filesystem) {
+                    const hasPerm = await ensureStoragePermission();
+                    if (!hasPerm) return;
+
+                    // Try Documents directory (visible in file manager on Android 11+)
+                    try {
+                        await Filesystem.mkdir({ path: 'MyFamilyID', directory: 'DOCUMENTS', recursive: true }).catch(function(){});
+                        await Filesystem.writeFile({
+                            path: 'MyFamilyID/' + filename,
+                            data: base64,
+                            directory: 'DOCUMENTS',
+                            encoding: 'base64'
+                        });
+                        showCustomPopup('Berhasil!', 'File tersimpan di:\nDocuments/MyFamilyID/' + filename);
+                        return;
+                    } catch (docErr) {
+                        console.warn('Write to DOCUMENTS failed:', docErr);
+                    }
+
+                    // Fallback: Cache directory (always accessible to app)
+                    try {
+                        await Filesystem.mkdir({ path: 'MyFamilyID', directory: 'CACHE', recursive: true }).catch(function(){});
+                        const result = await Filesystem.writeFile({
+                            path: 'MyFamilyID/' + filename,
+                            data: base64,
+                            directory: 'CACHE',
+                            encoding: 'base64'
+                        });
+                        showCustomPopup('Berhasil!', 'File tersimpan di cache aplikasi.\nPath: ' + result.uri);
+                        return;
+                    } catch (cacheErr) {
+                        console.warn('Write to CACHE also failed:', cacheErr);
+                    }
+                }
+
+                // Final fallback: browser download
+                var url = URL.createObjectURL(blob);
+                var a = document.createElement('a');
+                a.href = url; a.download = filename;
+                document.body.appendChild(a); a.click(); document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showCustomPopup('Berhasil!', 'File diunduh: ' + filename);
+            } catch (err) {
+                console.error('Export error:', err);
+                showCustomPopup('Gagal', 'Gagal mengekspor file: ' + err.message);
+            }
+        }
+
+        // ========== SHARE PDF ==========
+        async function sharePDF(filename, displayName) {
+            try {
+                const res = await fetch('Doc/' + filename);
+                if (!res.ok) throw new Error('File tidak ditemukan');
+                const blob = await res.blob();
+                const base64 = await blobToBase64(blob);
+
+                if (SharePlugin && Filesystem) {
+                    // Write to Cache (always shareable per Capacitor docs)
+                    var cached = await Filesystem.writeFile({
+                        path: 'share_' + filename,
+                        data: base64,
+                        directory: 'CACHE',
+                        encoding: 'base64'
+                    });
+                    // Pass native file:// URI directly — do NOT use convertFileSrc!
+                    await SharePlugin.share({
+                        title: displayName || filename,
+                        files: [cached.uri]
+                    });
+                } else {
+                    // Fallback: browser share or download
+                    if (navigator.share) {
+                        await navigator.share({
+                            title: displayName || filename,
+                            files: [new File([blob], filename, { type: 'application/pdf' })]
+                        });
+                    } else {
+                        var url = URL.createObjectURL(blob);
+                        var a = document.createElement('a');
+                        a.href = url; a.download = filename;
+                        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+                        URL.revokeObjectURL(url);
+                        showCustomPopup('Download', 'File diunduh: ' + filename);
+                    }
+                }
+            } catch (err) {
+                if (err.message !== 'User canceled') {
+                    console.error('Share error:', err);
+                    showCustomPopup('Gagal', 'Gagal share: ' + err.message);
+                }
+            }
+        }
+
+        function blobToBase64(blob) {
+            return new Promise((resolve, reject) => {
+                const r = new FileReader();
+                r.onloadend = () => resolve(r.result.split(',')[1]);
+                r.onerror = reject;
+                r.readAsDataURL(blob);
+            });
+        }
+
+        // ========== SCREENSHOT WARNING ==========
+        let screenshotPopupShown = false;
+        let lastPauseTime = 0;
+
+        function showScreenshotPopup() {
+            if (screenshotPopupShown) return;
+            screenshotPopupShown = true;
+            var p = document.getElementById('screenshotPopup');
+            p.style.display = 'flex';
+            requestAnimationFrame(function() { p.classList.add('show'); });
+        }
+        function closeScreenshotPopup() {
+            var p = document.getElementById('screenshotPopup');
+            p.classList.remove('show');
+            setTimeout(function() { p.style.display = 'none'; screenshotPopupShown = false; }, 300);
+        }
+
+        // Deteksi screenshot: app pause lalu resume cepat (<800ms)
+        document.addEventListener('visibilitychange', function() {
+            if (document.visibilityState === 'hidden') {
+                lastPauseTime = Date.now();
+            } else if (document.visibilityState === 'visible') {
+                if (lastPauseTime > 0 && (Date.now() - lastPauseTime) < 800) {
+                    showScreenshotPopup();
+                }
+                lastPauseTime = 0;
+            }
+        });
+
+        // ========== POPUP ==========
+        function showCustomPopup(title, message) {
+            document.getElementById('popupTitle').textContent = title;
+            document.getElementById('popupBody').textContent = message;
+            document.getElementById('popupBackBtn').style.display = 'inline-block';
+            document.getElementById('popupLogoutBtn').style.display = 'none';
+            const p = document.getElementById('customPopup');
+            p.style.display = 'flex';
+            requestAnimationFrame(() => p.classList.add('show'));
+        }
+        function showLogoutConfirm() {
+            document.getElementById('popupTitle').textContent = 'Konfirmasi Logout';
+            document.getElementById('popupBody').textContent = 'Apakah Anda yakin ingin keluar?';
+            document.getElementById('popupBackBtn').style.display = 'inline-block';
+            document.getElementById('popupLogoutBtn').style.display = 'inline-block';
+            const p = document.getElementById('customPopup');
+            p.style.display = 'flex';
+            requestAnimationFrame(() => p.classList.add('show'));
+        }
+        function closeCustomPopup() {
+            const p = document.getElementById('customPopup');
+            p.classList.remove('show');
+            setTimeout(() => { p.style.display = 'none'; document.getElementById('popupLogoutBtn').style.display = 'none'; }, 250);
+        }
+        function confirmLogout() {
+            closeCustomPopup();
+            document.getElementById('appContainer').classList.add('fade-out');
+            document.getElementById('loadingOverlay').classList.add('show');
+            setTimeout(() => logout(), 1000);
+        }
+
+        // ========== CLOCK ==========
+        function updateClock() {
+            const now = new Date();
+            document.getElementById('currentTime').textContent = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+        }
+        function calculateAge(d) {
+            const [dd, mm, yy] = d.split('-').map(Number);
+            const bd = new Date(yy, mm - 1, dd);
+            const now = new Date();
+            let age = now.getFullYear() - bd.getFullYear();
+            if (now.getMonth() < bd.getMonth() || (now.getMonth() === bd.getMonth() && now.getDate() < bd.getDate())) age--;
+            return age;
+        }
+        function updateProfileDisplay() {
+            if (!currentUser) return;
+            document.getElementById('profileName').textContent = currentUser.name;
+            document.getElementById('profileNik').textContent = currentUser.nik;
+            document.getElementById('profileStatus').textContent = currentUser.name === 'IDI PUTRA' ? 'KEPALA KELUARGA' : currentUser.name === 'UMMUL MAGFIROH' ? 'ISTRI' : 'ANGGOTA';
+            const age = calculateAge(currentUser.birthDate);
+            document.getElementById('userAgeDisplay').textContent = 'Umur: ' + age;
+            document.getElementById('profileAge').textContent = age;
+            const photo = document.getElementById('profilePhoto');
+            if (photo && currentUser.photo) photo.style.backgroundImage = "url('" + currentUser.photo + "')";
+        }
+
+        // ========== STORAGE HELPERS ==========
+        async function setStorageItem(k, v) { if (Preferences) await Preferences.set({ key: k, value: v }); else localStorage.setItem(k, v); }
+        async function getStorageItem(k) { if (Preferences) { const r = await Preferences.get({ key: k }); return r.value; } return localStorage.getItem(k); }
+        async function removeStorageItem(k) { if (Preferences) await Preferences.remove({ key: k }); else localStorage.removeItem(k); }
+
+        // ========== LOGIN ==========
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value.trim();
+            const remember = document.getElementById('rememberMe').checked;
+            const user = users.find(u => u.username.toLowerCase() === username.toLowerCase() && u.password === password);
+            if (user) {
+                currentUser = user;
+                await setStorageItem('currentUser', JSON.stringify(user));
+                if (remember) {
+                    await setStorageItem('rememberMe', 'true');
+                    await setStorageItem('savedUsername', username);
+                }
+                document.getElementById('loginScreen').classList.add('fade-out');
+                document.getElementById('loadingOverlay').classList.add('show');
+                setTimeout(() => {
+                    document.getElementById('loadingOverlay').classList.remove('show');
+                    document.getElementById('loginScreen').classList.remove('fade-out');
+                    showApp();
+                }, 800);
+            } else {
+                showCustomPopup('Login Gagal', 'Username atau password salah.');
+                document.getElementById('password').value = '';
+            }
+        });
+
+        // ========== TOGGLE PASSWORD ==========
+        document.getElementById('togglePassword').addEventListener('click', function() {
+            const pw = document.getElementById('password');
+            if (pw.type === 'password') {
+                pw.type = 'text';
+                this.src = 'assets/icon/eye-outline.svg';
+            } else {
+                pw.type = 'password';
+                this.src = 'assets/icon/eye-off-outline.svg';
+            }
+        });
+
+        // ========== INIT ==========
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadUsers();
+            const saved = await getStorageItem('currentUser');
+            const remember = await getStorageItem('rememberMe');
+            if (saved && remember === 'true') {
+                const parsed = JSON.parse(saved);
+                currentUser = users.find(u => u.username === parsed.username) || parsed;
+                showApp();
+            } else {
+                showLogin();
+            }
+            if (AppPlugin) {
+                AppPlugin.addListener('backButton', () => {
+                    if (document.getElementById('customPopup').classList.contains('show')) { closeCustomPopup(); return; }
+                    if (document.getElementById('contextMenu').style.display === 'block') { document.getElementById('contextMenu').style.display = 'none'; return; }
+                    if (isViewerOpen) { closeDocumentViewer(); return; }
+                    AppPlugin.exitApp();
+                });
+            }
+            document.addEventListener('mousedown', (e) => {
+                const cm = document.getElementById('contextMenu');
+                if (cm.style.display === 'block' && !cm.contains(e.target)) cm.style.display = 'none';
+            });
+            document.addEventListener('touchstart', (e) => {
+                const cm = document.getElementById('contextMenu');
+                if (cm.style.display === 'block' && !cm.contains(e.target)) cm.style.display = 'none';
+            });
+        });
+
+        async function showLogin() {
+            document.getElementById('loginScreen').style.display = 'block';
+            document.getElementById('appContainer').style.display = 'none';
+            document.body.classList.remove('has-nav');
+            const savedRemember = await getStorageItem('rememberMe');
+            document.getElementById('rememberMe').checked = savedRemember === 'true';
+            if (document.getElementById('rememberMe').checked) {
+                document.getElementById('username').value = await getStorageItem('savedUsername') || '';
+            }
+        }
+
+        async function showApp() {
+            document.getElementById('loginScreen').style.display = 'none';
+            document.getElementById('appContainer').style.display = 'flex';
+            document.getElementById('mainNav').style.display = 'flex';
+            document.body.classList.add('has-nav');
+            isAppReady = true;
+            const docs = await loadDocumentIndex();
+            displayDocuments(docs);
+            currentSection = 'documents';
+            document.getElementById('documentPreviewArea').className = 'scrollable-area active';
+            document.getElementById('profileArea').className = 'scrollable-area';
+            document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.nav-item')[0].classList.add('active');
+            document.getElementById('pageTitle').textContent = 'Dokumen Keluarga';
+            document.getElementById('appContainer').classList.remove('fade-out');
+            updateProfileDisplay();
+            updateClock();
+            if (clockInterval) clearInterval(clockInterval);
+            clockInterval = setInterval(updateClock, 60000);
+        }
+
+        // ========== DOCUMENTS ==========
+        function displayDocuments(docs) { allDocs = docs; renderDocuments(docs); }
+
+        function renderDocuments(docs) {
+            const c = document.getElementById('documentsList');
+            if (!docs.length) {
+                c.innerHTML = '<div style="text-align:center;padding:3rem 1rem;"><img src="assets/icon/search-outline.svg" style="width:64px;height:64px;opacity:0.3;margin-bottom:12px;"><p style="font-size:16px;font-weight:500;color:#475569;margin-bottom:6px;">Dokumen tidak ditemukan</p><p style="font-size:13px;color:#94a3b8;">Coba kata kunci lain</p></div>';
+                return;
+            }
+            c.innerHTML = docs.map(doc => {
+                const ext = doc.file.split('.').pop().toUpperCase();
+                return '<div class="document-item" data-file="' + doc.file + '" data-name="' + doc.name + '">'
+                    + '<div class="doc-icon"><img src="assets/icon/document-text-outline.svg" class="icon" style="color:#dc2626;"></div>'
+                    + '<div class="doc-info"><div class="doc-name">' + doc.name + '</div><div class="doc-ext">' + ext + '</div></div>'
+                    + '<div class="doc-actions">'
+                    + '<button class="doc-btn export-btn" onclick="event.stopPropagation(); exportPDF(\'' + doc.file + '\', \'' + doc.name + '\')"><img src="assets/icon/download-outline.svg" class="icon-sm" style="color:#2563eb;"></button>'
+                    + '<button class="doc-btn share-btn" onclick="event.stopPropagation(); sharePDF(\'' + doc.file + '\', \'' + doc.name + '\')"><img src="assets/icon/share-outline.svg" class="icon-sm" style="color:#16a34a;"></button>'
+                    + '</div></div>';
+            }).join('');
+
+            c.querySelectorAll('.document-item').forEach(item => {
+                let pressTimer = null;
+                longPressTriggered = false;
+                item.addEventListener('touchstart', function(e) {
+                    // Jangan trigger jika tap di tombol action (share/export)
+                    if (e.target.closest('.doc-actions')) return;
+                    longPressTriggered = false;
+                    pressTimer = setTimeout(() => {
+                        longPressTriggered = true;
+                        selectedDocument = { file: item.getAttribute('data-file'), name: item.getAttribute('data-name') };
+                        showContextMenu(item);
+                    }, 600);
+                });
+                item.addEventListener('touchend', function(e) {
+                    clearTimeout(pressTimer);
+                    // Jangan buka PDF jika tap di tombol action
+                    if (e.target.closest('.doc-actions')) return;
+                    if (!longPressTriggered) openDocumentViewer(item.getAttribute('data-file'), item.getAttribute('data-name'));
+                });
+                item.addEventListener('touchcancel', () => clearTimeout(pressTimer));
+            });
+        }
+
+        // ========== SEARCH ==========
+        document.addEventListener('DOMContentLoaded', () => {
+            const s = document.getElementById('searchInput');
+            if (s) s.addEventListener('input', (e) => {
+                const q = e.target.value.toLowerCase().trim();
+                if (!q) { renderDocuments(allDocs); return; }
+                renderDocuments(allDocs.filter(d => d.name.toLowerCase().includes(q) || d.file.toLowerCase().includes(q)));
+            });
+        });
+
+        // ========== CONTEXT MENU ==========
+        function showContextMenu(item) {
+            const r = item.getBoundingClientRect();
+            const m = document.getElementById('contextMenu');
+            m.style.left = Math.min(r.left, window.innerWidth - 200) + 'px';
+            m.style.top = (r.bottom + 4) + 'px';
+            m.style.display = 'block';
+        }
+        function handleContextAction(action) {
+            document.getElementById('contextMenu').style.display = 'none';
+            if (!selectedDocument) return;
+            if (action === 'export') exportPDF(selectedDocument.file, selectedDocument.name);
+            else if (action === 'share') sharePDF(selectedDocument.file, selectedDocument.name);
+        }
+
+        // ========== PDF VIEWER ==========
+        async function openDocumentViewer(file, name) {
+            const viewer = document.getElementById('documentViewerScreen');
+            const title = document.getElementById('viewerTitle');
+            const container = document.getElementById('pdfViewerContainer');
+            title.textContent = name;
+            container.innerHTML = '';
+
+            // Tombol export/share di header
+            document.getElementById('btnExportViewer').onclick = () => exportPDF(file, name);
+            document.getElementById('btnShareViewer').onclick = () => sharePDF(file, name);
+
+            const url = 'Doc/' + file;
+
+            try {
+                await loadPdfJs();
+                if (!pdfjsLib) throw new Error('PDF.js tidak tersedia');
+
+                // Fetch sebagai ArrayBuffer (lebih reliable di Android WebView)
+                const res = await fetch(url);
+                if (!res.ok) throw new Error('Gagal memuat PDF');
+                const arrayBuffer = await res.arrayBuffer();
+
+                const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                const totalPages = pdf.numPages;
+                const info = document.getElementById('pdfPageInfo');
+                info.textContent = '1 / ' + totalPages;
+
+                for (let i = 1; i <= totalPages; i++) {
+                    const page = await pdf.getPage(i);
+                    const scale = Math.min(1.5, (window.innerWidth - 24) / page.getViewport({ scale: 1 }).width);
+                    const viewport = page.getViewport({ scale });
+                    const canvas = document.createElement('canvas');
+                    canvas.width = viewport.width;
+                    canvas.height = viewport.height;
+                    await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+                    container.appendChild(canvas);
+                }
+
+                // Scroll update page info
+                if (container._scrollHandler) container.removeEventListener('scroll', container._scrollHandler);
+                container._scrollHandler = () => {
+                    const canvases = container.querySelectorAll('canvas');
+                    const st = container.scrollTop;
+                    let cur = 1;
+                    canvases.forEach((c, idx) => { if (st >= c.offsetTop - 100) cur = idx + 1; });
+                    info.textContent = cur + ' / ' + totalPages;
+                };
+                container.addEventListener('scroll', container._scrollHandler);
+            } catch (err) {
+                console.warn('PDF render gagal, coba iframe:', err);
+                const iframe = document.createElement('iframe');
+                iframe.src = url;
+                iframe.style.cssText = 'width:100%;height:100%;border:none;';
+                container.appendChild(iframe);
+                document.getElementById('pdfPageInfo').textContent = '';
+            }
+
+            viewer.style.display = 'flex';
+            requestAnimationFrame(() => viewer.classList.add('open'));
+            isViewerOpen = true;
+        }
+
+        function closeDocumentViewer() {
+            const viewer = document.getElementById('documentViewerScreen');
+            const container = document.getElementById('pdfViewerContainer');
+            // Remove open, add closing class for explicit close animation
+            viewer.classList.remove('open');
+            viewer.classList.add('closing');
+            // Cleanup after transition completes
+            function onTransitionEnd(e) {
+                if (e.target !== viewer) return;
+                viewer.removeEventListener('transitionend', onTransitionEnd);
+                viewer.classList.remove('closing');
+                viewer.style.display = 'none';
+                if (container._scrollHandler) { container.removeEventListener('scroll', container._scrollHandler); container._scrollHandler = null; }
+                container.innerHTML = '';
+                document.getElementById('pdfPageInfo').textContent = '';
+                isViewerOpen = false;
+            }
+            viewer.addEventListener('transitionend', onTransitionEnd);
+            // Fallback: if transitionend never fires (some WebViews)
+            setTimeout(() => {
+                if (isViewerOpen) {
+                    viewer.removeEventListener('transitionend', onTransitionEnd);
+                    viewer.classList.remove('closing');
+                    viewer.style.display = 'none';
+                    if (container._scrollHandler) { container.removeEventListener('scroll', container._scrollHandler); container._scrollHandler = null; }
+                    container.innerHTML = '';
+                    document.getElementById('pdfPageInfo').textContent = '';
+                    isViewerOpen = false;
+                }
+            }, 400);
+        }
+
+        // ========== SWIPE GESTURE ==========
+        (function initSwipeGesture() {
+            let startX = 0, startY = 0, startTime = 0;
+            const MIN_SWIPE = 60;   // minimal px untuk dianggap swipe
+            const MAX_TIME = 400;   // maksimal ms
+            const wrapper = document.getElementById('contentWrapper');
+            if (!wrapper) return;
+
+            wrapper.addEventListener('touchstart', function(e) {
+                if (!isAppReady || isViewerOpen || isNavigating) return;
+                startX = e.touches[0].clientX;
+                startY = e.touches[0].clientY;
+                startTime = Date.now();
+            }, { passive: true });
+
+            wrapper.addEventListener('touchend', function(e) {
+                if (!isAppReady || isViewerOpen || isNavigating) return;
+                var dx = e.changedTouches[0].clientX - startX;
+                var dy = e.changedTouches[0].clientY - startY;
+                var dt = Date.now() - startTime;
+                // Harus horizontal (dx > dy) dan cukup cepat + jauh
+                if (Math.abs(dx) < MIN_SWIPE || dt > MAX_TIME || Math.abs(dx) < Math.abs(dy) * 1.2) return;
+                if (dx > 0 && currentSection === 'profile') {
+                    navigateTo('documents'); // swipe kanan → ke Dokumen
+                } else if (dx < 0 && currentSection === 'documents') {
+                    navigateTo('profile');   // swipe kiri → ke Profil
+                }
+            }, { passive: true });
+        })();
+
+        // ========== NAVIGATION ==========
+        let isNavigating = false;
+        function navigateTo(section) {
+            if (!isAppReady || section === currentSection || isNavigating) return;
+            isNavigating = true;
+            const map = { documents: 'documentPreviewArea', profile: 'profileArea' };
+            const old = document.getElementById(map[currentSection]);
+            const next = document.getElementById(map[section]);
+            const order = ['documents', 'profile'];
+            const left = order.indexOf(section) > order.indexOf(currentSection);
+
+            // Old section: play slide-out animation (keep active so opacity stays 1 during anim)
+            old.classList.add(left ? 'slide-out-left' : 'slide-out-right');
+            // New section: make visible, then play slide-in
+            next.classList.add('active');
+            next.classList.add(left ? 'slide-in-right' : 'slide-in-left');
+
+            // Update nav bar
+            document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.nav-item')[order.indexOf(section)].classList.add('active');
+            document.getElementById('pageTitle').textContent = section === 'documents' ? 'Dokumen Keluarga' : 'Profil';
+            if (section === 'profile') updateProfileDisplay();
+
+            // After animation ends, cleanup
+            function onAnimEnd(e) {
+                if (e.target !== old && e.target !== next) return;
+                old.removeEventListener('animationend', onAnimEnd);
+                next.removeEventListener('animationend', onAnimEnd);
+                old.classList.remove('active', 'slide-out-left', 'slide-out-right');
+                next.classList.remove('slide-in-right', 'slide-in-left');
+                isNavigating = false;
+            }
+            old.addEventListener('animationend', onAnimEnd);
+            next.addEventListener('animationend', onAnimEnd);
+            // Fallback if animationend doesn't fire
+            setTimeout(() => {
+                if (isNavigating) {
+                    old.removeEventListener('animationend', onAnimEnd);
+                    next.removeEventListener('animationend', onAnimEnd);
+                    old.classList.remove('active', 'slide-out-left', 'slide-out-right');
+                    next.classList.remove('slide-in-right', 'slide-in-left');
+                    isNavigating = false;
+                }
+            }, 450);
+            currentSection = section;
+        }
+
+        async function logout() {
+            await removeStorageItem('currentUser');
+            await removeStorageItem('rememberMe');
+            await removeStorageItem('savedUsername');
+            currentUser = null;
+            if (clockInterval) { clearInterval(clockInterval); clockInterval = null; }
+            document.getElementById('loadingOverlay').classList.remove('show');
+            document.getElementById('appContainer').classList.remove('fade-out');
+            showLogin();
+        }
+    </script>
+</body>
+</html>

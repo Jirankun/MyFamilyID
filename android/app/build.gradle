@@ -1,0 +1,89 @@
+apply plugin: 'com.android.application'
+
+// ========== LOAD SIGNING dari ~/.environment_variable.sh ==========
+def envFile = new File(System.getProperty('user.home'), '.environment_variable.sh')
+def signKey = ''
+def signAlias = ''
+def signKeyPass = ''
+def signStorePass = ''
+
+if (envFile.exists()) {
+    envFile.eachLine { line ->
+        line = line.trim()
+        if (line.startsWith('export ') && line.contains('=')) {
+            def cleaned = line.replaceFirst(/^export\s+/, '')
+            def parts = cleaned.split('=', 2)
+            if (parts.length == 2) {
+                def key = parts[0].trim()
+                def val = parts[1].trim().replaceAll('^"|"$|^\'|\'$', '')
+                // Resolve $HOME dan $SIGN
+                val = val.replace('$HOME', System.getProperty('user.home'))
+                val = val.replace('$SIGN', System.getProperty('user.home') + '/Android/Sign')
+                if (key == 'SIGN_KEY') signKey = val
+                if (key == 'SIGN_ALIAS') signAlias = val
+                if (key == 'SIGN_KEY_PASS') signKeyPass = val
+                if (key == 'SIGN_STORE_PASS') signStorePass = val
+            }
+        }
+    }
+}
+
+android {
+    namespace = "com.jirankun.myfamilyid"
+    compileSdk = rootProject.ext.compileSdkVersion
+    defaultConfig {
+        applicationId "com.jirankun.myfamilyid"
+        minSdkVersion rootProject.ext.minSdkVersion
+        targetSdkVersion rootProject.ext.targetSdkVersion
+        versionCode 1
+        versionName "1.0"
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        aaptOptions {
+            ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
+        }
+    }
+    signingConfigs {
+        release {
+            storeFile file(signKey)
+            storePassword signStorePass
+            keyAlias signAlias
+            keyPassword signKeyPass
+        }
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.release
+        }
+    }
+}
+
+repositories {
+    flatDir{
+        dirs '../capacitor-cordova-android-plugins/src/main/libs', 'libs'
+    }
+}
+
+dependencies {
+    implementation fileTree(include: ['*.jar'], dir: 'libs')
+    implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
+    implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
+    implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
+    implementation project(':capacitor-android')
+    testImplementation "junit:junit:$junitVersion"
+    androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
+    androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
+    implementation project(':capacitor-cordova-android-plugins')
+}
+
+apply from: 'capacitor.build.gradle'
+
+try {
+    def servicesJSON = file('google-services.json')
+    if (servicesJSON.text) {
+        apply plugin: 'com.google.gms.google-services'
+    }
+} catch(Exception e) {
+    logger.info("google-services.json not found, Google services plugin not applied. Push Notifications won't work")
+}

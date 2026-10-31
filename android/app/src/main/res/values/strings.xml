@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">MyFamilyID</string>
+    <string name="title_activity_main">MyFamilyID</string>
+    <string name="package_name">com.jirankun.myfamilyid</string>
+    <string name="custom_url_scheme">com.jirankun.myfamilyid</string>
+</resources>
